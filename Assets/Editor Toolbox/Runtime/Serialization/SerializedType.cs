@@ -51,7 +51,6 @@ namespace UnityEngine
             if (!string.IsNullOrEmpty(classReference))
             {
                 type = Type.GetType(classReference);
-
                 if (type == null)
                 {
 #if UNITY_EDITOR

@@ -176,7 +176,7 @@ namespace Toolbox.Editor
                 case ToolboxConditionAttribute a:
                     TryAssignConditionAttribute(a);
                     break;
-                case ToolboxCompositionAttribute a:
+                case ToolboxArchetypeAttribute a:
                     var composition = a.Process();
                     foreach (var newAttribute in composition)
                     {
@@ -287,7 +287,8 @@ namespace Toolbox.Editor
 
             for (var i = 0; i < decoratorAttributes.Count; i++)
             {
-                ToolboxDrawerModule.GetDecoratorDrawer(decoratorAttributes[i])?.OnGuiBegin(decoratorAttributes[i]);
+                var attribute = decoratorAttributes[i];
+                ToolboxDrawerModule.GetDecoratorDrawer(attribute)?.OnGuiBegin(attribute);
             }
         }
 
@@ -300,7 +301,8 @@ namespace Toolbox.Editor
 
             for (var i = decoratorAttributes.Count - 1; i >= 0; i--)
             {
-                ToolboxDrawerModule.GetDecoratorDrawer(decoratorAttributes[i])?.OnGuiClose(decoratorAttributes[i]);
+                var attribute = decoratorAttributes[i];
+                ToolboxDrawerModule.GetDecoratorDrawer(attribute)?.OnGuiClose(attribute);
             }
         }
 

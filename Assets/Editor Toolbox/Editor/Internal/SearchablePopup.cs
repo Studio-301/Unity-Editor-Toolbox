@@ -290,12 +290,12 @@ namespace Toolbox.Editor.Internal
             internal static readonly float padding = 6.0f;
             internal static readonly float spacing = EditorGUIUtility.standardVerticalSpacing;
 
-            internal static GUIStyle toolbarStyle;
-            internal static GUIStyle scrollbarStyle;
-            internal static GUIStyle selectionStyle;
-            internal static GUIStyle searchBoxStyle;
-            internal static GUIStyle showCancelButtonStyle;
-            internal static GUIStyle hideCancelButtonStyle;
+            internal static readonly GUIStyle toolbarStyle;
+            internal static readonly GUIStyle scrollbarStyle;
+            internal static readonly GUIStyle selectionStyle;
+            internal static readonly GUIStyle searchBoxStyle;
+            internal static readonly GUIStyle showCancelButtonStyle;
+            internal static readonly GUIStyle hideCancelButtonStyle;
 
             static Style()
             {

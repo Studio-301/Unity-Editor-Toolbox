@@ -33,8 +33,8 @@ namespace Toolbox.Editor.Drawers
 
         private static void ConnectCallbacks(ReorderableListBase list, ReorderableListExposedAttribute attribute)
         {
-            var listTarget = list.SerializedObject;
             var fieldInfo = list.List.GetFieldInfo();
+            var listTarget = list.SerializedObject;
             var returnType = fieldInfo.FieldType.GetEnumeratedType();
             var methodName = attribute.OverrideNewElementMethodName;
             var methodInfo = FindMethod(listTarget, methodName, returnType);

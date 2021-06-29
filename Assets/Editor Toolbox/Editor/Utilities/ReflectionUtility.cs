@@ -1,7 +1,8 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
 
 using UnityEditor;
-using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Toolbox.Editor
 {
@@ -24,8 +25,8 @@ namespace Toolbox.Editor
 
         internal static MethodInfo GetObjectMethod(string methodName, params Object[] targetObjects)
         {
-            return GetObjectMethod(methodName, 
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static, 
+            return GetObjectMethod(methodName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static,
                 targetObjects);
         }
 
@@ -37,7 +38,8 @@ namespace Toolbox.Editor
             }
 
             var targetType = targetObjects[0].GetType();
-            var methodInfo = targetType.GetMethod(methodName, bindingFlags);
+            var methodInfo = targetType.GetMethod(methodName, 
+                bindingFlags, null, CallingConventions.Any, new Type[0], null);
             return methodInfo;
         }
 

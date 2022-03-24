@@ -85,4 +85,5 @@ MonoBehaviour:
   - classReference: Toolbox.Editor.Drawers.ReorderableListExposedAttributeDrawer,
       Toolbox-Editor
   - classReference: Toolbox.Editor.Drawers.ScrollableItemsAttributeDrawer, Toolbox-Editor
-  targetTypeDrawerHandlers: []
+  targetTypeDrawerHandlers:
+  - classReference: Toolbox.Editor.Drawers.SerializedDictionaryDrawer, Toolbox-Editor

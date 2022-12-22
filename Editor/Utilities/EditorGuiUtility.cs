@@ -12,6 +12,8 @@ namespace Toolbox.Editor
     /// </summary>
     internal static class EditorGuiUtility
     {
+        private const float indentPerLevel = 15.0f;
+
         private static readonly Dictionary<string, Texture2D> loadedTextures = new Dictionary<string, Texture2D>();
 
 
@@ -97,5 +99,11 @@ namespace Toolbox.Editor
 
             return null;
         }
+
+
+        public static float FoldoutSize { get; internal set; } = 15.0f;
+        public static float SpacingSize => EditorGUIUtility.standardVerticalSpacing;
+        public static float HeightSize => EditorGUIUtility.singleLineHeight;
+        public static float IndentSize => EditorGUI.indentLevel * indentPerLevel;
     }
 }

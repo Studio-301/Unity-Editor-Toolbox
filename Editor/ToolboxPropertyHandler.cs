@@ -87,7 +87,7 @@ namespace Toolbox.Editor
         /// <summary>
         /// Constructor prepares all property-related data for custom drawing.
         /// </summary>
-        public ToolboxPropertyHandler(SerializedProperty property)
+        internal ToolboxPropertyHandler(SerializedProperty property)
         {
             this.property = property;
 
@@ -95,9 +95,7 @@ namespace Toolbox.Editor
             //first of all we have to retrieve the native data like FieldInfo, custom native drawer, etc.
             //after this we have to retrieve (if possible) all Toolbox-related data - ToolboxAttributes
 
-            //set basic content for the handled property
             label = new GUIContent(property.displayName);
-
             //get FieldInfo associated to this property, it is needed to cache custom attributes
             if ((fieldInfo = property.GetFieldInfo(out type)) == null)
             {
@@ -116,19 +114,13 @@ namespace Toolbox.Editor
 
         private void ProcessBuiltInData()
         {
-            //check if this property has built-in property drawer
-            if (!(hasBuiltInPropertyDrawer = ToolboxDrawerModule.HasNativeTypeDrawer(type)))
+            var attributes = fieldInfo.GetCustomAttributes<PropertyAttribute>();
+            foreach (var attribute in attributes)
             {
-                var propertyAttributes = fieldInfo.GetCustomAttributes<PropertyAttribute>();
-                foreach (var attribute in propertyAttributes)
-                {
-                    var attributeType = attribute.GetType();
-                    if (hasBuiltInPropertyDrawer = ToolboxDrawerModule.HasNativeTypeDrawer(attributeType))
-                    {
-                        break;
-                    }
-                }
+                HandleNewAttribute(attribute);
             }
+
+            CheckIfPropertyHasPropertyDrawer(type);
         }
 
         /// <summary>
@@ -159,6 +151,38 @@ namespace Toolbox.Editor
 
             //check if property has custom conditon drawer
             hasToolboxConditionDrawer = conditionAttribute != null;
+        }
+
+        private void CheckIfPropertyHasPropertyDrawer(Type type)
+        {
+            //NOTE: arrays cannot have built-in property drawers
+            if (hasBuiltInPropertyDrawer || isArray)
+            {
+                return;
+            }
+
+            hasBuiltInPropertyDrawer = ToolboxDrawerModule.HasNativeTypeDrawer(type);
+        }
+
+        private void HandleNewAttribute(PropertyAttribute attribute)
+        {
+            if (!isChild)
+            {
+                //NOTE: setting tooltip and labels is valid only for parent or single properties
+                //it's a bit ugly but, it's the only semi-acceptable way to support built-in TooltipAttribute
+                switch (attribute)
+                {
+                    case TooltipAttribute a:
+                        label.tooltip = a.tooltip;
+                        return;
+                    case NewLabelAttribute a:
+                        label.text = a.NewLabel;
+                        return;
+                }
+            }
+
+            var attributeType = attribute.GetType();
+            CheckIfPropertyHasPropertyDrawer(attributeType);
         }
 
         private void HandleNewAttribute(ToolboxAttribute attribute)
@@ -243,7 +267,7 @@ namespace Toolbox.Editor
             }
         }
 
-        private void DrawProperty(GUIContent label)
+        private void DrawProperty(SerializedProperty property, GUIContent label)
         {
             //get toolbox drawer for the property or draw it in the default way
             if (hasToolboxPropertyDrawer && (!hasBuiltInPropertyDrawer || isArray))
@@ -262,14 +286,14 @@ namespace Toolbox.Editor
                     //draw target property using the associated type drawer
                     ToolboxDrawerModule.GetTargetTypeDrawer(type)?.OnGui(property, label);
                 }
+
+                return;
             }
-            else
-            {
-                OnGuiDefault(label);
-            }
+
+            OnGuiDefault(property, label);
         }
 
-        private void BeginDecoratorDrawers()
+        private void BeginDecoratorDrawers(PropertyCondition conditionState = PropertyCondition.Valid)
         {
             if (!hasToolboxDecoratorDrawer)
             {
@@ -278,11 +302,11 @@ namespace Toolbox.Editor
 
             for (var i = 0; i < decoratorAttributes.Count; i++)
             {
-                ToolboxDrawerModule.GetDecoratorDrawer(decoratorAttributes[i])?.OnGuiBegin(decoratorAttributes[i]);
+                HandleDecorator(decoratorAttributes[i], true, conditionState);
             }
         }
 
-        private void CloseDecoratorDrawers()
+        private void CloseDecoratorDrawers(PropertyCondition conditionState = PropertyCondition.Valid)
         {
             if (!hasToolboxDecoratorDrawer)
             {
@@ -291,11 +315,42 @@ namespace Toolbox.Editor
 
             for (var i = decoratorAttributes.Count - 1; i >= 0; i--)
             {
-                ToolboxDrawerModule.GetDecoratorDrawer(decoratorAttributes[i])?.OnGuiClose(decoratorAttributes[i]);
+                HandleDecorator(decoratorAttributes[i], false, conditionState);
             }
         }
 
-        private PropertyCondition Validate()
+        private void HandleDecorator(ToolboxDecoratorAttribute attribute, bool onBegin, PropertyCondition conditionState = PropertyCondition.Valid)
+        {
+            var drawer = ToolboxDrawerModule.GetDecoratorDrawer(attribute);
+            if (drawer == null)
+            {
+                return;
+            }
+
+            if (!attribute.ApplyCondition)
+            {
+                conditionState = PropertyCondition.Valid;
+            }
+
+            var isValid = conditionState != PropertyCondition.NonValid;
+            var disable = conditionState == PropertyCondition.Disabled;
+            if (isValid)
+            {
+                using (new EditorGUI.DisabledScope(disable))
+                {
+                    if (onBegin)
+                    {
+                        drawer.OnGuiBegin(attribute);
+                    }
+                    else
+                    {
+                        drawer.OnGuiClose(attribute);
+                    }
+                }
+            }
+        }
+
+        private PropertyCondition Validate(SerializedProperty property)
         {
             if (!hasToolboxConditionDrawer)
             {
@@ -303,19 +358,6 @@ namespace Toolbox.Editor
             }
 
             return ToolboxDrawerModule.GetConditionDrawer(conditionAttribute)?.OnGuiValidate(property, conditionAttribute) ?? PropertyCondition.Valid;
-        }
-
-        /// <summary>
-        /// Begins vertical group to "pack" all property-related controls into one body.
-        /// </summary>
-        private void BeginVerticalLayoutBody()
-        {
-            EditorGUILayout.BeginVertical();
-        }
-
-        private void CloseVerticalLayoutBody()
-        {
-            EditorGUILayout.EndVertical();
         }
 
 
@@ -332,29 +374,45 @@ namespace Toolbox.Editor
         /// </summary>
         public void OnGuiLayout(GUIContent label)
         {
+            OnGuiLayout(property, label);
+        }
+
+        /// <summary>
+        /// Draw property using built-in layout system and cached <see cref="ToolboxAttributeDrawer"/>s.
+        /// </summary>
+        public void OnGuiLayout(SerializedProperty property)
+        {
+            OnGuiLayout(property, label);
+        }
+
+        /// <summary>
+        /// Draw property using built-in layout system and cached <see cref="ToolboxAttributeDrawer"/>s.
+        /// </summary>
+        public void OnGuiLayout(SerializedProperty property, GUIContent label)
+        {
             //depending on previously gained data we can provide more action
             //using custom attributes and information about native drawers
             //we can use all associated and allowed ToolboxDrawers (for each type)
 
-            //begin all needed decorator drawers in the proper order
-            BeginDecoratorDrawers();
-
             //handle condition attribute and draw property if possible
-            var conditionState = Validate();
+            var conditionState = Validate(property);
+            //begin all needed decorator drawers in the proper order
+            BeginDecoratorDrawers(conditionState);
             var isValid = conditionState != PropertyCondition.NonValid;
             var disable = conditionState == PropertyCondition.Disabled;
             if (isValid)
             {
                 using (new EditorGUI.DisabledScope(disable))
                 {
-                    BeginVerticalLayoutBody();
-                    DrawProperty(label);
-                    CloseVerticalLayoutBody();
+                    using (new EditorGUILayout.VerticalScope())
+                    {
+                        DrawProperty(property, label);
+                    }
                 }
             }
 
             //close all needed decorator drawers in the proper order
-            CloseDecoratorDrawers();
+            CloseDecoratorDrawers(conditionState);
         }
 
         /// <summary>
@@ -370,15 +428,39 @@ namespace Toolbox.Editor
         /// </summary>
         public void OnGuiDefault(GUIContent label)
         {
+            OnGuiDefault(property, label);
+        }
+
+        /// <summary>
+        /// Draws property in the default way, without additional <see cref="ToolboxAttributeDrawer"/>s.
+        /// </summary>
+        public void OnGuiDefault(SerializedProperty property)
+        {
+            OnGuiDefault(property, label);
+        }
+
+        /// <summary>
+        /// Draws property in the default way, without additional <see cref="ToolboxAttributeDrawer"/>s.
+        /// </summary>
+        public void OnGuiDefault(SerializedProperty property, GUIContent label)
+        {
+#if TOOLBOX_FORCE_DEFAULT_LISTS
+            if (isArray)
+            {
+                EditorGUILayout.PropertyField(property, label, true);
+                return;
+            }
+#endif
             //all "single" properties and native drawers should be drawn in the native way
             if (hasBuiltInPropertyDrawer)
             {
                 ToolboxEditorGui.DrawNativeProperty(property, label);
-                return;
             }
-
             //handles property in default native way but supports ToolboxDrawers in children
-            ToolboxEditorGui.DrawDefaultProperty(property, label);
+            else
+            {
+                ToolboxEditorGui.DrawDefaultProperty(property, label);
+            }
         }
     }
 }

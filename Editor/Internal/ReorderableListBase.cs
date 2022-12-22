@@ -24,7 +24,7 @@ namespace Toolbox.Editor.Internal
 
 
         public DrawRectCallbackDelegate drawHeaderCallback;
-        public DrawRectCallbackDelegate drawVacantCallback;
+        public DrawRectCallbackDelegate drawEmptyCallback;
         public DrawRectCallbackDelegate drawFooterCallback;
 
         public DrawRectCallbackDelegate drawHeaderBackgroundCallback;
@@ -52,6 +52,7 @@ namespace Toolbox.Editor.Internal
 
 
         protected const string defaultLabelFormat = "{0} {1}";
+        protected const string defaultElementName = "Element";
 
         /// <summary>
         /// Hotcontrol index, unique for this instance.
@@ -140,7 +141,6 @@ namespace Toolbox.Editor.Internal
 
                         //don't allow arrowing through the ends of the list
                         Index = Mathf.Clamp(Index, 0, List.arraySize - 1);
-
                     }
 
                     break;
@@ -301,6 +301,7 @@ namespace Toolbox.Editor.Internal
                 }
             }
 
+            HandleHeaderEvents(headerRect);
             //apply the padding to get the internal rect
             headerRect.xMin += Style.padding;
             headerRect.xMax -= Style.padding;
@@ -397,6 +398,9 @@ namespace Toolbox.Editor.Internal
             return GetCoveredElementIndex(Event.current.mousePosition.y) == Index;
         }
 
+        protected virtual void HandleHeaderEvents(Rect rect)
+        { }
+
         protected abstract int GetCoveredElementIndex(float localY);
 
         protected abstract int GetCoveredElementIndex(Vector2 mousePosition);
@@ -404,7 +408,7 @@ namespace Toolbox.Editor.Internal
 
         public string GetElementDefaultName(int index)
         {
-            return string.Format(defaultLabelFormat, "Element", index);
+            return string.Format(defaultLabelFormat, defaultElementName, index);
         }
 
         public string GetElementDefinedName(int index)
@@ -469,7 +473,8 @@ namespace Toolbox.Editor.Internal
             var property = List.GetArrayElementAtIndex(Index);
             var newValue = overrideNewElementCallback(Index);
             //update property directly by the reflection
-            property.SetProperValue(property.GetFieldInfo(), newValue, false);
+            var fieldInfo = property.GetFieldInfo();
+            property.SetProperValue(fieldInfo, newValue, false);
         }
 
         public void RemoveElement()
@@ -492,6 +497,15 @@ namespace Toolbox.Editor.Internal
         /// </summary>
         public virtual void DoList()
         {
+            DoList(TitleLabel);
+        }
+
+        /// <summary>
+        /// Draws whole list at once.
+        /// </summary>
+        public virtual void DoList(GUIContent label)
+        {
+            TitleLabel = label;
             //NOTE: indentation will break some controls
             //make sure there is no indent while drawing
             using (new ZeroIndentScope())
@@ -617,20 +631,22 @@ namespace Toolbox.Editor.Internal
             var label = EditorGUI.BeginProperty(rect, TitleLabel, List);
             //display the property label using the preprocessed name
             DrawStandardName(rect, label, Foldable);
-
-            var diff = rect.height - Style.sizePropertyStyle.fixedHeight;
-            rect.yMin += diff / 2;
-            rect.yMax -= diff / 2;
-            rect.xMin = rect.xMax - Style.sizeAreaWidth;
-
             using (new EditorGUI.DisabledScope(FixedSize))
             {
                 var property = Size;
+                var sizeValue = property.intValue;
+
+                var potentialSizeContent = new GUIContent(sizeValue.ToString());
+                var width = Style.sizePropertyStyle.CalcSize(potentialSizeContent).x;
+                var diff = rect.height - Style.sizePropertyStyle.fixedHeight;
+                rect.yMin += diff / 2;
+                rect.yMax -= diff / 2;
+                rect.xMin = rect.xMax - Mathf.Max(Style.sizeAreaWidth, width);
 
                 EditorGUI.BeginProperty(rect, Style.sizePropertyContent, property);
                 EditorGUI.BeginChangeCheck();
                 //cache the size value using the delayed int field
-                var sizeValue = Mathf.Max(EditorGUI.DelayedIntField(rect, property.intValue, Style.sizePropertyStyle), 0);
+                sizeValue = Mathf.Max(EditorGUI.DelayedIntField(rect, sizeValue, Style.sizePropertyStyle), 0);
                 if (EditorGUI.EndChangeCheck())
                 {
                     property.intValue = sizeValue;
@@ -881,6 +897,8 @@ namespace Toolbox.Editor.Internal
             internal static readonly float dragAreaWidth = 40.0f;
             internal static readonly float sizeAreaWidth = 19.0f;
             internal static readonly float minEmptyHeight = 8.0f;
+
+            internal static readonly Color selectionColor = new Color(0.3f, 0.47f, 0.75f);
 
             internal static readonly GUIContent sizePropertyContent;
             internal static readonly GUIContent iconToolbarAddContent;

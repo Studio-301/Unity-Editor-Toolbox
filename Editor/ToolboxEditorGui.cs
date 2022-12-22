@@ -2,6 +2,7 @@
 
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Toolbox.Editor
 {
@@ -196,6 +197,46 @@ namespace Toolbox.Editor
         public static void DrawTexture(Rect rect, Texture texture, ScaleMode scaleMode, bool alphaBlend)
         {
             GUI.DrawTexture(rect, texture, scaleMode, alphaBlend);
+        }
+
+        public static void DrawMinMaxSlider(Rect rect, string label, ref float xValue, ref float yValue, float minValue, float maxValue)
+        {
+            DrawMinMaxSlider(rect, new GUIContent(label), ref xValue, ref yValue, minValue, maxValue);
+        }
+
+        public static void DrawMinMaxSlider(Rect rect, GUIContent label, ref float xValue, ref float yValue, float minValue, float maxValue)
+        {
+            rect = EditorGUI.PrefixLabel(rect, label);
+
+            var fieldWidth = EditorGUIUtility.fieldWidth;
+            var minFieldRect = new Rect(rect.xMin, rect.y, fieldWidth, rect.height);
+            var maxFieldRect = new Rect(rect.xMax - fieldWidth, rect.y, fieldWidth, rect.height);
+
+            //set slider rect between min and max fields + additional padding
+            var spacing = 8.0f;
+            var sliderRect = Rect.MinMaxRect(minFieldRect.xMax + spacing,
+                                             rect.yMin,
+                                             maxFieldRect.xMin - spacing,
+                                             rect.yMax);
+
+            EditorGUI.BeginChangeCheck();
+            xValue = EditorGUI.FloatField(minFieldRect, xValue);
+            yValue = EditorGUI.FloatField(maxFieldRect, yValue);
+            EditorGUI.MinMaxSlider(sliderRect, ref xValue, ref yValue, minValue, maxValue);
+
+            //values validation (xValue can't be higher than yValue etc.)
+            xValue = Mathf.Clamp(xValue, minValue, Mathf.Min(maxValue, yValue));
+            yValue = Mathf.Clamp(yValue, Mathf.Max(minValue, xValue), maxValue);
+        }
+
+        public static void BoldLabel(Rect rect, string label)
+        {
+            BoldLabel(rect, new GUIContent(label));
+        }
+
+        public static void BoldLabel(Rect rect, GUIContent label)
+        {
+            EditorGUI.LabelField(rect, label, EditorStyles.boldLabel);
         }
     }
 
@@ -392,7 +433,7 @@ namespace Toolbox.Editor
         /// </summary>
         public static void DrawToolboxProperty(SerializedProperty property)
         {
-            ToolboxDrawerModule.GetPropertyHandler(property)?.OnGuiLayout();
+            ToolboxDrawerModule.GetPropertyHandler(property)?.OnGuiLayout(property);
         }
 
         /// <summary>
@@ -401,7 +442,7 @@ namespace Toolbox.Editor
         /// </summary>
         public static void DrawToolboxProperty(SerializedProperty property, GUIContent label)
         {
-            ToolboxDrawerModule.GetPropertyHandler(property)?.OnGuiLayout(label);
+            ToolboxDrawerModule.GetPropertyHandler(property)?.OnGuiLayout(property, label);
         }
 
         /// <summary>
@@ -505,7 +546,7 @@ namespace Toolbox.Editor
         /// </summary>
         public static void DrawNativeProperty(SerializedProperty property, GUIContent label)
         {
-            EditorGUILayout.PropertyField(property, label, property.isExpanded);
+            EditorGUILayout.PropertyField(property, label);
         }
 
         /// <summary>
@@ -545,6 +586,50 @@ namespace Toolbox.Editor
             label.image = EditorGuiUtility.GetHelpIcon(MessageType.Warning);
 #endif
             EditorGUI.LabelField(position, label);
+        }
+
+        /// <summary>
+        /// Layout-based equivalent of the <see cref="EditorGUI.BeginProperty(Rect, GUIContent, SerializedProperty)"/> method.
+        /// </summary>
+        public static void BeginProperty(SerializedProperty property, ref GUIContent label, out Rect position)
+        {
+            var rowHeight = EditorGUIUtility.singleLineHeight;
+            position = EditorGUILayout.GetControlRect(true, rowHeight);
+            label = EditorGUI.BeginProperty(position, label, property);
+        }
+
+        /// <summary>
+        /// Layout-based equivalent of the <see cref="EditorGUI.EndProperty"/> method.
+        /// </summary>
+        public static void CloseProperty()
+        {
+            EditorGUI.EndProperty();
+        }
+
+        /// <summary>
+        /// Displays all visible children (except the default script property) associated to the given <see cref="Object"/>.
+        /// This method doesn't support Toolbox-based features.
+        /// </summary>
+        public static void DrawObjectProperties(Object instance)
+        {
+            using (SerializedObject serializedObject = new SerializedObject(instance))
+            {
+                var property = serializedObject.GetIterator();
+                if (property.NextVisible(true))
+                {
+                    if (!PropertyUtility.IsDefaultScriptProperty(property))
+                    {
+                        DrawNativeProperty(property.Copy());
+                    }
+
+                    while (property.NextVisible(false))
+                    {
+                        DrawNativeProperty(property.Copy());
+                    }
+                }
+
+                serializedObject.ApplyModifiedProperties();
+            }
         }
     }
 }

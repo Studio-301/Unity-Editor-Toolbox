@@ -16,37 +16,49 @@ namespace Toolbox.Editor
     {
         static InspectorUtility()
         {
+            //we can use each new Editor to check if 'OnEditorReload' should be called
+            ToolboxEditorHandler.OnBeginToolboxEditor += CheckReloads;
+
             //we can use 'OnBeginToolboxEditor' and 'OnCloseToolboxEditor' to cache 
             //processed Editors and determine the real context of the serialization
-            ToolboxEditor.OnBeginToolboxEditor += CacheTargets;
-            ToolboxEditor.OnCloseToolboxEditor += ClearTargets;
-
-            //we can use each new Editor to check if 'OnEditorReload' should be called
-            ToolboxEditor.OnBeginToolboxEditor += CheckReloads;
+            ToolboxEditorHandler.OnBeginToolboxEditor += OnBeginEditor;
+            ToolboxEditorHandler.OnBreakToolboxEditor += OnBreakEditor;
+            ToolboxEditorHandler.OnCloseToolboxEditor += OnCloseEditor;
         }
 
+
+        private static int lastCachedEditorId;
         private static Editor lastCachedEditor;
+        private static readonly Stack<Editor> cachedEditors = new Stack<Editor>();
 
 
-        private static void CacheTargets(Editor editor)
+        private static void OnBeginEditor(Editor editor)
         {
-            CurrentTargetObjects = editor.targets;
+            cachedEditors.Push(editor);
         }
 
-        private static void ClearTargets(Editor editor)
+        private static void OnBreakEditor(Editor editor)
         {
-            CurrentTargetObjects = null;
+            cachedEditors.Clear();
+        }
+
+        private static void OnCloseEditor(Editor editor)
+        {
+            if (InToolboxEditor)
+            {
+                cachedEditors.Pop();
+            }
         }
 
         private static void CheckReloads(Editor editor)
         {
-            if (lastCachedEditor == null)
+            //NOTE: it means that last Editor was null or disposed, anyway we probably want to reload drawers-related cache
+            if (lastCachedEditor == null || lastCachedEditorId != lastCachedEditor.GetInstanceID())
             {
+                lastCachedEditor = editor;
+                lastCachedEditorId = editor.GetInstanceID();
                 OnEditorReload?.Invoke();
             }
-
-            //this Editor will be destroyed every time when object is deselected
-            lastCachedEditor = editor;
         }
 
 
@@ -112,7 +124,9 @@ namespace Toolbox.Editor
                 throw new ArgumentNullException(nameof(target));
             }
 
-            var methodInfo = target.GetType().GetMethod("OnValidate", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            var methodInfo = target.GetType().GetMethod("OnValidate",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                null, CallingConventions.Any, new Type[0], null);
             if (methodInfo != null)
             {
                 methodInfo.Invoke(target, null);
@@ -129,18 +143,24 @@ namespace Toolbox.Editor
         /// <summary>
         /// Last cached targetObjects from the currently processed <see cref="ToolboxEditor"/>.
         /// </summary>
-        internal static Object[] CurrentTargetObjects { get; private set; }
+        internal static Object[] CurrentTargetObjects
+        {
+            get => cachedEditors.Count > 0 ? cachedEditors.Peek().targets : new Object[0];
+        }
 
-        internal static bool InToolboxEditor => lastCachedEditor;
+        internal static bool InToolboxEditor
+        {
+            get => cachedEditors.Count > 0;
+        }
     }
 
     internal static partial class InspectorUtility
     {
-        private static List<Component> copiedComponents = new List<Component>();
+        private static readonly List<Component> copiedComponents = new List<Component>();
 
 
-        [MenuItem("CONTEXT/Component/Copy Components", false, priority = 200)]
-        private static void Copy()
+        [MenuItem("CONTEXT/Component/Copy Components", false, priority = 700)]
+        internal static void Copy()
         {
             copiedComponents.Clear();
             var selectedGameObjects = Selection.gameObjects;
@@ -167,13 +187,13 @@ namespace Toolbox.Editor
         }
 
         [MenuItem("CONTEXT/Component/Copy Components", true)]
-        private static bool ValidateCopy()
+        internal static bool ValidateCopy()
         {
             return Selection.gameObjects.Length > 0;
         }
 
-        [MenuItem("CONTEXT/Component/Paste Components", false, priority = 201)]
-        private static void Paste()
+        [MenuItem("CONTEXT/Component/Paste Components", false, priority = 701)]
+        internal static void Paste()
         {
             var selectedGameobjects = Selection.gameObjects;
 
@@ -194,13 +214,13 @@ namespace Toolbox.Editor
         }
 
         [MenuItem("CONTEXT/Component/Paste Components", true)]
-        private static bool ValidatePaste()
+        internal static bool ValidatePaste()
         {
             return Selection.gameObjects.Length > 0 && copiedComponents.Count > 0;
         }
 
-        [MenuItem("CONTEXT/Component/Hide Component", false, priority = 300)]
-        private static void Hide(MenuCommand menuCommand)
+        [MenuItem("CONTEXT/Component/Hide Component", false, priority = 702)]
+        internal static void Hide(MenuCommand menuCommand)
         {
             var component = menuCommand.context as Component;
             var components = component.gameObject.GetComponents<Component>();
@@ -234,7 +254,7 @@ namespace Toolbox.Editor
         }
 
         [Obsolete]
-        private static void HideAll(MenuCommand menuCommand)
+        internal static void HideAll(MenuCommand menuCommand)
         {
             var gameObject = (menuCommand.context as Component).gameObject;
             var components = (menuCommand.context as Component).GetComponents<Component>();
@@ -250,7 +270,7 @@ namespace Toolbox.Editor
         }
 
         [Obsolete]
-        private static void ShowAll(MenuCommand menuCommand)
+        internal static void ShowAll(MenuCommand menuCommand)
         {
             var gameObject = (menuCommand.context as Component).gameObject;
             var components = (menuCommand.context as Component).GetComponents<Component>();

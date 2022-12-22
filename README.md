@@ -22,10 +22,16 @@ Unity 2018.x or newer
 
 - Install Editor Toolbox package:
 	- 1 way: Find Unity Package Manager (Window/Package Manager) and add package using this git URL:
-	```https://github.com/arimger/Unity-Editor-Toolbox.git#upm```
-	- 2 way: Copy and paste `Editor Toolbox` directory into your project (Assets/...) + add dependencies
+	```
+	https://github.com/arimger/Unity-Editor-Toolbox.git#upm
+	```
+	- 2 way: Copy and paste `Assets/Editor Toolbox` directory into your project (Assets/...) + add dependencies
+	- 3 way: Install via [OpenUPM registry](https://openupm.com):
+	```
+	openupm add com.browar.editor-toolbox
+	```
 - Open Edit/Project Settings/Editor Toolbox window
-- If settings file is not found, press "Refresh" button or create new one
+- If settings file is not found, press the "Refresh" button or create a new one
 - Manage settings in your way
 	- Enable/disable Hierarchy overlay, choose allowed information
 	- Enable/disable Project icons or/and assign own directories
@@ -36,18 +42,24 @@ Unity 2018.x or newer
 - [Attributes & Drawers](#drawers)
 	- [Regular Drawers](#regulardrawers)
 	- [Toolbox Drawers](#toolboxdrawers)
-- [Reorderable List](#reorderable-list)
+		- [Toolbox Decorator Attributes](#toolboxdecorator)
+		- [Toolbox Condition Attributes](#toolboxcondition)
+		- [Toolbox Property (Self/List) Attributes](#toolboxproperty)
+		- [Toolbox Special Attributes](#toolboxspecial)
+		- [Toolbox Archetype Attributes](#toolboxarchetype)
+		- [SerializeReference (ReferencePicker)](#toolboxreference)
+		- [Toolbox Custom Editors](#toolboxeditors)
+	- [Material Drawers](#materialdrawers)
 - [Serialized Types](#serialized-types)
 - [Editor Extensions](#editor-extensions)
 	- [Hierarchy](#hierarchy)
 	- [Project](#project)
 	- [Toolbar](#toolbar)
 	- [Utilities](#utilities)
-- [Editor Extras](#editor-extras)
 
 ## Settings
 
-The most important file, it allows the user to manage all available features. Can be accessed from the Project Settings window (Edit/Project Settings.../Editor Toolbox) or directly inside the Project window. Make sure to have one valid settings file per project.
+The most important file, allows the user to manage all available features. Can be accessed from the Project Settings window (Edit/Project Settings.../Editor Toolbox) or directly inside the Project window. Make sure to have one valid settings file per project.
 
 Available features are divided into three groups:
 - Hierarchy
@@ -56,11 +68,16 @@ Available features are divided into three groups:
 
 Each module is described in its respective section.
 
+If you want to keep your custom settings between UET versions, create your own settings file:
+```
+Create/Editor Toolbox/Settings
+```
+
 ## Attributes & Drawers <a name="drawers"></a>
 
 ### Regular Drawers <a name="regulardrawers"></a>
 
-Drawers based on build-in classes **PropertyDrawer/DecoratorDrawer** and associated **PropertyAttribute**.
+Drawers based on built-in classes **PropertyDrawer/DecoratorDrawer** and associated **PropertyAttribute**.
 
 #### TagSelectorAttribute
 
@@ -81,17 +98,6 @@ public float var1 = 80.0f;
 ![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/progressbar1.png)\
 ![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/progressbar2.png)
 
-#### NewLabelAttribute
-
-```csharp
-[NewLabel("Custom Label", "Element")]
-public int[] vars1 = new int[3];
-[NewLabel("Custom Label")]
-public float var2 = 25.4f;
-```
-
-![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/newlabel.png)
-
 #### MinMaxSliderAttribute
 
 ```csharp
@@ -111,10 +117,6 @@ public Component var2;
 ```
 
 ![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/assetpreview.png)
-
-#### HideLabelAttribute
-
-![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/hidelabel.png)
 
 #### SuffixAttribute
 
@@ -172,6 +174,14 @@ public int presetTarget;
 ```
 
 ![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/preset.png)
+
+```csharp
+private readonly int[] presetValues = new[] { 1, 2, 3, 4, 5 };
+private readonly string[] optionLabels = new[] { "a", "b", "c", "d", "e" };
+
+[Preset(nameof(presetValues), nameof(optionLabels))]
+public int presetTarget;
+```
 
 #### SearchableEnumAttribute
 
@@ -255,11 +265,13 @@ Examples **'How to'** create custom ToolboxDrawers you can find [HERE](https://g
 
 ![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/inspector.png)
 
-#### ToolboxDecoratorAttributes
+#### Toolbox Decorator Attributes <a name="toolboxdecorator"></a>
 
 Display/create something before and after property in the desired order (using Order property).   
 In fact **ToolboxDecoratorDrawers** are like extended version of built-in **DecoratorDrawers**. 
 Unfortunately, standard decorators won't always work with ToolboxDrawers so try to use this replacement instead.
+
+Each **ToolboxDecoratorAttribute** has two basic properties **Order** (indicates the drawing order) and **ApplyCondition** (determines if decorator will be disabled/hidden along with associated property).
 
 ```csharp
 [BeginGroup("Group1")]
@@ -303,12 +315,17 @@ public int var1;
 public int var1;
 ```
 ```csharp
-[EditorButton(nameof(MyMethod), "<b>My</b> Custom Label", activityType: ButtonActivityType.OnPlayMode)]
+[EditorButton(nameof(MyMethod), "<b>My</b> Custom Label", activityType: ButtonActivityType.OnPlayMode, ValidateMethodName = nameof(ValidationMethod))]
 public int var1;
 
 private void MyMethod()
 {
 	Debug.Log("MyMethod is invoked");
+}
+
+private bool ValidationMethod()
+{
+	return var1 == 0;
 }
 ```
 ```csharp
@@ -318,6 +335,10 @@ public int var1;
 ```csharp
 [Help("Help information", UnityMessageType.Warning, Order = -1)]
 public int var1;
+[DynamicHelp(nameof(Message), UnityMessageType.Error)]
+public int var2;
+
+public string Message => "Dynamic Message";
 ```
 ```csharp
 [ImageArea("https://img.itch.zone/aW1nLzE5Mjc3NzUucG5n/original/Viawjm.png", 150.0f)]
@@ -333,25 +354,34 @@ public int var1;
 
 ![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/button.png)
 
-#### ToolboxConditionAttributes 
+#### Toolbox Condition Attributes <a name="toolboxcondition"></a>
 
 Enable/disable or show/hide properties using custom conditions. You can use them together with any other type of drawer.
-Every ToolboxConditionDrawer supports boolean, int, string and enum types and works even with array/list properties.
+Every ToolboxConditionDrawer supports boolean, int, string, UnityEngine.Object and enum types and works even with array/list properties.
+You are able to pass values from fields, properties, and methods.
 
 ```csharp
-public string stringValue = "sho";
-[ShowIf(nameof(stringValue), "show")] //or HideIfAttribute
+public string StringValue => "Sho";
+[ShowIf(nameof(StringValue), "show")]
 public int var1;
+
+public GameObject objectValue;
+[HideIf(nameof(objectValue), false)]
+public int var2;
 ```
 
 ```csharp
 public KeyCode enumValue = KeyCode.A;
-[EnableIf(nameof(enumValue), KeyCode.A)] //or DisableIfAttribute
+[EnableIf(nameof(enumValue), KeyCode.A)]
 public int var1;
 
-public float floatValue;
-[EnableIf(nameof(floatValue), 2.0f, TestMethod = ComparisionTestMethod.GreaterEqual)]
+[DisableIf(nameof(GetFloatValue), 2.0f, Comparison = UnityComparisonMethod.GreaterEqual)]
 public int var2;
+
+public float GetFloatValue()
+{
+	return 1.6f;
+}
 ```
 
 ```csharp
@@ -375,13 +405,15 @@ public int[] vars1 = new [] { 1, 2, 3, 4 };
 ![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/enableif1.png)\
 ![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/enableif2.png)
 
-#### InLineEditorAttribute
+#### Toolbox Property Attributes <a name="toolboxproperty"></a>
+
+##### InLineEditorAttribute
 
 This attribute gives a great possibility to extend all reference-related (UnityEngine.Object) fields. 
 Using it you are able to 'inline' Editors for: components, ScriptableObjects, Materials, Renderers, MeshFilters, Textures, AudioClips, etc.
 
 ```csharp
-[InLineEditor]
+[InLineEditor(DisableEditor = false)]
 public Transform var1;
 ```
 ![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/inlined3.png)
@@ -396,57 +428,12 @@ public Material var1;
 ```
 ![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/inlined1.png)
 
-#### ScrollableItemsAttribute
-
-It's a perfect solution to inspect large arrays/lists and optimize displaying them within the Inspector window.
-
 ```csharp
-[ScrollableItems(defaultMinIndex: 0, defaultMaxIndex: 5)]
-public GameObject[] largeArray = new GameObject[19];
+[InLineEditor(HideScript = false)]
+public MyCustomType var1;
 ```
 
-![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/scrollableitems.png)
-
-#### ToolboxArchetypeAttributes
-
-Using this attribute you are able to implement custom patterns of frequently grouped **ToolboxAttributes**.
-
-
-```csharp
-[AttributeUsage(AttributeTargets.Field, AllowMultiple = true)]
-public class TitleAttribute : ToolboxArchetypeAttribute
-{
-	public TitleAttribute(string label)
-	{
-		Label = label;
-	}
-
-
-	public override ToolboxAttribute[] Process()
-	{
-		return new ToolboxAttribute[]
-		{
-			new LabelAttribute(Label),
-			new LineAttribute(padding: 0)
-			{
-				ApplyIndent = true
-			}
-		};
-	}
-
-
-	public string Label { get; private set; }
-}
-```
-
-```csharp
-[Title("Header")]
-public int var1;
-```
-
-![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/title.png)
-
-## Reorderable List
+##### Reorderable List
 
 Custom implementation of standard ReorderableList (UnityEditorInternal). Usable as an attribute in serialized fields or a single object in custom Editors.
 
@@ -485,6 +472,199 @@ private int GetValue()
 }
 ```
 
+##### ScrollableItemsAttribute
+
+It's a perfect solution to inspect large arrays/lists and optimize displaying them within the Inspector window.
+
+```csharp
+[ScrollableItems(defaultMinIndex: 0, defaultMaxIndex: 5)]
+public GameObject[] largeArray = new GameObject[19];
+```
+
+![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/scrollableitems.png)
+
+##### Other ToolboxProperty attributes
+
+```csharp
+[IgnoreParent]
+public Quaternion q;
+```
+
+```csharp
+[DynamicMinMaxSlider(nameof(minValue), nameof(MaxValue))]
+public Vector2 vec2;
+
+public float minValue;
+public float MaxValue => 15.0f;
+```
+
+#### Toolbox Special Attributes <a name="toolboxspecial"></a>
+
+Attributes handled internally by the ToolboxEditor. You can combine them with any other attributes.
+
+```csharp
+[NewLabel("Custom Label")]
+public float var1 = 25.4f;
+```
+
+```csharp
+[HideLabel]
+public float var1;
+```
+
+![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/hidelabel.png)
+
+#### Toolbox Archetype Attributes <a name="toolboxarchetype"></a>
+
+Using this attribute you are able to implement custom patterns of frequently grouped **ToolboxAttributes**.
+
+
+```csharp
+[AttributeUsage(AttributeTargets.Field, AllowMultiple = true)]
+public class TitleAttribute : ToolboxArchetypeAttribute
+{
+	public TitleAttribute(string label)
+	{
+		Label = label;
+	}
+
+
+	public override ToolboxAttribute[] Process()
+	{
+		return new ToolboxAttribute[]
+		{
+			new LabelAttribute(Label),
+			new LineAttribute(padding: 0)
+			{
+				ApplyIndent = true
+			}
+		};
+	}
+
+
+	public string Label { get; private set; }
+}
+```
+
+```csharp
+[Title("Header")]
+public int var1;
+```
+
+![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/title.png)
+
+#### SerializeReference (ReferencePicker) <a name="toolboxreference"></a>
+
+You can draw properties marked with the **[SerializeReference]** attribute with an additional type picker that allows you to manipulate what managed type will be serialized.
+
+To prevent issues after renaming types use `UnityEngine.Scripting.APIUpdating.MovedFromAttribute`.
+
+```csharp
+[SerializeReference, ReferencePicker(TypeGrouping = TypeGrouping.ByFlatName)]
+public Interface1 var1;
+[SerializeReference, ReferencePicker]
+public Interface1 var1;
+[SerializeReference, ReferencePicker(ParentType = typeof(ClassWithInterface2)]
+public ClassWithInterfaceBase var2;
+
+public interface Interface1 { }
+
+[Serializable]
+public struct Struct : Interface1
+{
+	public bool var1;
+	public bool var2;
+}
+
+public abstract class ClassWithInterfaceBase : Interface1 { }
+
+[Serializable]
+public class ClassWithInterface1 : ClassWithInterfaceBase
+{
+	public GameObject go;
+}
+
+[Serializable]
+public class ClassWithInterface2 : ClassWithInterfaceBase
+{
+	[LeftToggle]
+	public bool var1;
+}
+
+[Serializable]
+public class ClassWithInterface3 : ClassWithInterfaceBase
+{
+	public int var1;
+}
+```
+
+![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/referencepicker.png)
+
+#### Custom Editors <a name="toolboxeditors"></a>
+
+If you want to create a custom **UnityEditor.Editor** for your components and still use Toolbox-related features be sure to inherit from the **Toolbox.Editor.ToolboxEditor** class.
+More details (e.g. how to customize properties drawing) you can find in the [HOWTO](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Assets/Editor%20Toolbox/HOWTO.md) document.
+
+```csharp
+using UnityEditor;
+using UnityEngine;
+#if UNITY_2019_1_OR_NEWER
+using UnityEditor.UIElements;
+using UnityEngine.UIElements;
+#endif
+using Toolbox.Editor;
+
+[CustomEditor(typeof(SampleBehaviour))]
+public class SampleEditor : ToolboxEditor
+{
+	private void OnEnable()
+	{ }
+
+	private void OnDisable()
+	{ }
+
+	public override void DrawCustomInspector()
+	{
+		base.DrawCustomInspector();
+		
+		//for custom properties:
+		// - ToolboxEditorGui.DrawToolboxProperty(serializedObject.FindProperty("myProperty"));
+	}
+}
+```
+
+##### Custom Editor Implementation
+- **Toolbox.Editor.ToolboxEditor** - default class, override it if you want to implement a custom Editor for your components and ScriptableObjects
+- **Toolbox.Editor.ToolboxScriptedImporterEditor** - override it if you want to implement a custom Editor for your custom importers
+
+### Material Drawers <a name="materialdrawers"></a>
+
+```
+[CompactTexture]
+_MainTex ("Texture", 2D) = "white" {}
+[Vector2]
+_Vector1 ("Vector2", Vector) = (0.0, 0.0, 0.0)
+[Vector3]
+_Vector2 ("Vector3", Vector) = (0.0, 0.0, 0.0)
+[MinMaxSlider(20.0, 165.0)]
+_Vector3 ("MinMax Vector", Vector) = (50.0, 55.0, 0.0)
+[Indent(3)]
+_Float1 ("Float1", Float) = 0.0
+[Help(Custom Help Box , 1)]
+_Float2 ("Float2", Float) = 0.0
+_Float3 ("Float3", Float) = 0.0
+[Title(Custom Title, 4)]
+_Float ("Float", Float) = 0.5
+[Toggle][Space]
+_ToggleProperty ("Toggle", Int) = 0
+[ShowIfToggle(_ToggleProperty)]
+_ShowIfExample ("Texture", 2D) = "White" {}
+[HideIfToggle(_ToggleProperty)]
+_HideIfExample ("Range", Range(0, 1)) = 0.75
+```
+
+![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/customshader.png)
+
 ## Serialized Types
 
 #### SerializedType
@@ -492,7 +672,7 @@ private int GetValue()
 Allows to serialize Types and pick them through a dedicated picker.
 
 ```csharp
-[ClassExtends(typeof(Collider), Grouping = ClassGrouping.None, AddTextSearchField = false)] //or [ClassImplements(typeof(interface))] for interfaces
+[TypeConstraint(typeof(Collider), AllowAbstract = false, AllowObsolete = false, TypeSettings = TypeSettings.Class, TypeGrouping = TypeGrouping.None)]
 public SerializedType var1;
 
 public void Usage()
@@ -549,6 +729,14 @@ public void Usage()
 ![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/dictionary1.png)
 
 ![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/dictionary2.png)
+
+#### SerializedDateTime
+
+Allows to serialize DateTime.
+
+#### SerializedDirectory
+
+Allows to serialize folders in form of assets and retrieve direct paths in runtime.
 
 ## Editor Extensions
 
@@ -635,10 +823,9 @@ Copy and paste all components from/to particular GameObject.
 
 ![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/utils.png)
 
-## Editor Extras
+Create multiple ScriptableObjects at once.
+```
+Assets/Create/Editor Toolbox/ScriptableObject Creation Wizard
+```
 
-I decieded to move additional editors and tools to Gist.
-
-### Prefab/GameObject Painter
-
-Check it out [HERE](https://gist.github.com/arimger/00842a217ea8ab03d4e1b81f11592cf3).
+![inspector](https://github.com/arimger/Unity-Editor-Toolbox/blob/develop/Docs/createso.png)

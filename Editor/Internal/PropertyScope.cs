@@ -1,4 +1,5 @@
 ﻿using System;
+
 using UnityEditor;
 using UnityEngine;
 
@@ -12,20 +13,51 @@ namespace Toolbox.Editor.Internal
     {
         private readonly SerializedProperty property;
 
+
         public PropertyScope(SerializedProperty property, GUIContent label)
         {
             this.property = property;
-            var rowHeight = EditorGUIUtility.singleLineHeight;
-            var labelRect = EditorGUILayout.GetControlRect(true, rowHeight);
-            label = EditorGUI.BeginProperty(labelRect, label, property);
-            property.isExpanded = EditorGUI.Foldout(labelRect, property.isExpanded, label, true);
+            ToolboxEditorGui.BeginProperty(property, ref label, out var rect);
+            HandleEvents(rect);
+            TryDrawLabel(rect, label);
         }
+
+
+        private void HandleEvents(Rect rect)
+        {
+            if (property.isArray)
+            {
+                DraggingUtility.DoDragAndDropForProperty(rect, property);
+            }
+        }
+
+        private void TryDrawLabel(Rect rect, GUIContent label)
+        {
+            InputRect = rect;
+            var size = EditorStyles.label.CalcSize(label);
+            rect.xMax = rect.xMin + size.x;
+            rect.xMax += EditorGuiUtility.IndentSize;
+            rect.xMax += EditorGuiUtility.SpacingSize;
+            LabelRect = rect;
+            if (property.hasVisibleChildren)
+            {
+                property.isExpanded = EditorGUI.Foldout(LabelRect, property.isExpanded, label, true);
+            }
+            else
+            {
+                EditorGUI.LabelField(LabelRect, label);
+            }
+        }
+
 
         public void Dispose()
         {
-            EditorGUI.EndProperty();
+            ToolboxEditorGui.CloseProperty();
         }
 
+
         public bool IsVisible => property.isExpanded;
+        public Rect LabelRect { get; private set; }
+        public Rect InputRect { get; private set; }
     }
 }

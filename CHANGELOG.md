@@ -1,3 +1,152 @@
+## 0.12.0 [10.12.2022]
+
+### Changed:
+- UX improvements for the ScriptableObjectCreationWizard
+- New API for drawing custom Editors (check HOWTO.md for more details)
+- Fix label drawing while using the [ReferencePickerAttribute]
+- Fix searching for private methods in base classes while using the [EditorButtonAttribute]
+- Fix minor issues while using conditional drawers during multi-selection
+- Fix minor issues while using the [TitleAttribute] in groups
+
+## 0.11.9 [22.10.2022]
+
+### Added:
+- ScriptableObjectCreationWizard (possibility to create multiple ScriptableObjects at once)
+
+### Changed:
+- Fix displaying empty fields marked with the [SerializeReference] attribute
+- Fix Scene data serialization in the SerializedScene class
+- Fix retrieving FieldInfo from nested [SerializeReference]-based fields
+
+## 0.11.8 [15.09.2022]
+
+### Added:
+- Utility methods for the Rect type
+- Utility methods for the EditorPrefs API
+
+### Changed:
+- Possibility to define custom validation method in the EditorButton attribute
+
+## 0.11.7 [04.09.2022]
+
+### Added:
+- Possibility to force default (built-in) behaviour for arrays/list
+
+### Changed:
+- Improvements to EditorButton labels
+- Improvements to type fields while drawing [ReferencePicker]-based properties
+- Types returned by the TypeUtilities can now be sorted (additional property for the TypeConstraintContext class)
+
+## 0.11.5 [18.08.2022]
+
+### Added:
+- Possibility to hide the m_Script property while using the InLineEditorAttribute (HideScript = true)
+- Possibility to pick base type in the ReferencePickerAttribute
+- Possibility to pick display options in the ReferencePickerAttribute
+
+### Changed:
+- Fix displaying custom labels in the ToolboxEditorList
+- For now all methods placed in the PropertyUtility script are public
+
+## 0.11.4 [17.07.2022]
+
+### Added:
+- ToolboxWizard, additional Toolbox-based equivalent for the ScriptableWizard class
+
+### Changed:
+- Fix caching FieldInfo for [SerializeReference] properties
+
+## 0.11.3 [05.06.2022]
+
+### Added:
+- 'ApplyCondition' property to decorators (possibility to apply property condition state (disabled/hidden) to associated decorators
+- Begin/EndVerticalAttribute
+- Optional labels property ('OptionHandle') for the PresetAttribute
+
+### Changed:
+- Fix overriding labels in ReorderableLists
+- Fix drawing MinMaxSlider in indentations
+
+## 0.11.1 [08.05.2022]
+
+### Added:
+- ReferencePicker for properties with the [SerializeReference] attribute
+- TypeField - dedicated and independent type picker
+- SerializedDirectory
+- .editorconfig for the sample project
+
+### Changed:
+- New sample classes & general improvements to the SampleScene
+- Renamed 'Scripts' directory to 'Runtime'
+- Path serialization in the SerializedScene class
+- NewLabel & HideLabel attributes now can be combined with any other attributes
+- Performance improvements related to types caching
+- Fix drawing FormattedNumber within vertical groups
+- Fix drawing tooltips [TooltipAttribute]
+- Fix drawing AssetPreview
+
+## 0.10.9 [02.03.2022]
+
+### Added:
+- SerializedDirectory
+
+### Changed:
+- Fix usage of Editor-only API in runtime scripts (TypeConstraintAttribute)
+
+## 0.10.8 [26.02.2022]
+
+### Added:
+- [Conditional("UNITY_EDITOR")] attribute to all drawer attributes
+- Possibility to ignore certain properties directly in the ToolboxEditor OnGUI callback
+
+### Changed:
+- Resizing "Size" field in the ReorderableLists depending on the content
+- Serializing Scene name in the SerializedScene class
+- Optimization of types caching (mostly related to the SerializedType class)
+
+## 0.10.6 [30.11.2021]
+
+### Added:
+- DynamicRangeSliderAttribute
+- SerializedDateTime
+
+### Changed:
+- Fix disposing inlined Editors in ScriptableObjects-based Inspectors
+- Fix disabling "Edit" button when inlined Editor is disabled
+- Fix relative path when ToolboxEditorSettings is created manually
+
+## 0.10.4 [27.10.2021]
+
+### Added:
+- DynamicMinMaxSliderAttribute
+
+### Changed:
+- Fix dragging and dropping elements into arrays/list
+- Fix behaviour of EditorButtons in nested Editors
+
+## 0.10.2 [20.08.2021]
+
+### Changed:
+- Fix marking asset objects as dirty
+- Fix built-in array drawers
+
+## 0.10.1 [17.08.2021]
+
+### Added:
+- Reflection-based drawers: possibility to pass data from non-serialized fields, properties, and methods
+- DynamicHelpAttribute
+- Unit tests
+- Possibility to disable content in inlined Editors
+
+### Changed:
+- Fix parent extraction from the SerializedProperty
+- Fix popup indentations
+
+## 0.9.4 [29.07.2021]
+
+### Added:
+- Pack of custom material drawers
+
 ## 0.9.2 [29.07.2021]
 
 ### Changed:
